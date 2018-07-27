@@ -14,17 +14,29 @@ import DAQ
 import matplotlib.pyplot as plt
 
 
-
 class IV:
     def __init__(self):
         self.Vdata = []
         self.Idata = []
         
-        self.v1 = float(input("Maximum voltage: "))
-        self.v2 = float(input("Minimum voltage: "))
-        self.step = float(input("Step: "))
-        self.Navg = int(input("Averaging factor: ")) + 1
-        self.use = "IV.use"
+        if len(sys.argv) >= 5:
+            self.save_name = sys.argv[1]
+            self.v1 = float(sys.argv[2])
+            self.v2 = float(sys.argv[3])
+            self.step = int(sys.argv[4])
+            self.Navg = int(sys.argv[5])
+            if len(sys.argv) == 7:
+                self.use = sys.argv[6]
+            else:
+                self.use = "IV.use"
+        else:
+            self.save_name = "IVtest"
+            self.save_name = input("Output file: ")
+            self.v1 = float(input("Minimum voltage: "))
+            self.v2 = float(input("Maximum voltage: "))
+            self.step = float(input("Step: "))
+            self.Navg = int(input("Averaging factor: ")) + 1
+            self.use = "IV.use"
         
         if self.v1 < self.v2:
             self.v1, self.v2 = self.v2, self.v1
@@ -39,8 +51,8 @@ class IV:
         self.Vs_max = float(lines[1].split()[0])
         self.MaxDAC = float(lines[2].split()[0])
         self.ADRate = int(lines[3].split()[0])
-        self.G1 = float(lines[4].split()[0])
-        self.G2 = float(lines[5].split()[0])
+        self.G_volt = float(lines[4].split()[0])
+        self.G_curr = float(lines[5].split()[0])
         self.Boardnum = int(lines[6].split()[0])
         #self.AD_GAIN = int(lines[7].split()[0])
         #self.Poffset = float(lines[8].split()[0])
@@ -73,7 +85,7 @@ class IV:
     def readVolt(self, channel = 0):
         # Reads voltage
         volt = self.daq.AIn(channel)
-        volt = (volt/G1)*1000
+        volt = (volt/G_volt)*1000
         return volt
     
     def setSweep(self):
@@ -107,7 +119,7 @@ class IV:
        
        
        
-    def spreadsheet(self, save_name = "IVtest"):
+    def spreadsheet(self):
         print("\nWriting data to spreadsheet...")
         
         # Creates localhost for libre office
@@ -122,7 +134,7 @@ class IV:
         sheet[0,0:2].values = ["Voltage (mV)","Current (mA)"]
         sheet[1:len(self.Vdata)+1, 0].values = self.Vdata
         sheet[1:len(self.Idata)+1, 1].values = self.Idata
-        doc.save('IVData/' + str(save_name) + '.xlsx')
+        doc.save('IVData/' + str(self.save_name) + '.xlsx')
         doc.close()
     
     def plotIV(self):
@@ -133,7 +145,7 @@ class IV:
         plt.axis([min(self.Vdata), max(self.Vdata), min(self.Idata), max(self.Idata)])
         plt.show()
    
-          
+"""    
 if __name__ == "__main__":
     test = IV()
     test.readFile()
@@ -148,3 +160,4 @@ if __name__ == "__main__":
     #test.plotIV()
     
     print("\nEnd.")
+"""

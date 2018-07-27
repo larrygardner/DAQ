@@ -32,9 +32,9 @@ class DAQ:
             print("Could not find DAQ device(s).")
         
     def connect(self,Boardnum = 0):
-        # Connects to DAQ device     
+        # Connects to DAQ device
         try:
-            # Creates DAQ device object
+            self.device = get_daq_device_inventory(self.interface_type)
             self.daq_device = DaqDevice(self.device[Boardnum])
             # Connect to DAQ device
             descriptor = self.daq_device.get_descriptor()
