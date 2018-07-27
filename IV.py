@@ -24,7 +24,7 @@ class IV:
         self.v2 = float(input("Minimum voltage: "))
         self.step = float(input("Step: "))
         self.Navg = int(input("Averaging factor: ")) + 1
-        self.use = str(input("Name of USE file: "))
+        self.use = "IV.use"
         
         if self.v1 < self.v2:
             self.v1, self.v2 = self.v2, self.v1
@@ -41,9 +41,9 @@ class IV:
         self.ADRate = int(lines[3].split()[0])
         self.G1 = float(lines[4].split()[0])
         self.G2 = float(lines[5].split()[0])
-        self.BoardNum = int(lines[6].split()[0])
-        self.AD_GAIN = int(lines[7].split()[0])
-        self.Poffset = float(lines[8].split()[0])
+        self.Boardnum = int(lines[6].split()[0])
+        #self.AD_GAIN = int(lines[7].split()[0])
+        #self.Poffset = float(lines[8].split()[0])
         
         self.Vrange = self.Vs_max - self.Vs_min
         self.n0 = self.MaxDAC / self.Vrange
@@ -59,30 +59,60 @@ class IV:
             self.v2 = self.Vs_min
         if self.v2 > self.Vs_max:
             self.v2 = self.Vs_max
+            
+    def initDAQ(self):
+        # Lists available DAQ devices and connects the selected board
+        self.daq = DAQ.DAQ()
+        self.daq.listDevices()
+        self.daq.connect(self.Boardnum)
     
-    """
-    def readVolt(self, channel = 0, input_mode = AiInputMode.SINGLE_ENDED):
+    def endDAQ(self):
+        # Disconnects and releases selected board number
+        self.daq.disconnect(self.Boardnum)
+    
+    def readVolt(self, channel = 0):
         # Reads voltage
-        v = self.ai_device.a_in(channel, input_mode, ranges[0], AInFlag.DEFAULT)
-        #BoardNum,0,AD_GAIN)
-        
-        jv=ul.cbToEngUnits(BoardNum,AD_GAIN,jv)
-        jv=(jv/G1)*1000
-        global volts
-        volts=jv
-        return jv
+        volt = self.daq.AIn(channel)
+        volt = (volt/G1)*1000
+        return volt
     
-    
-    def initMeas(self):
-        print("Preparing for measurement...")
-        print("Changing voltage to maximum...")
-    """  
+    def setSweep(self):
+        print("Preparing for sweep...")
+        # Sets variables in preparation for sweep
+        self.crop()
+        self.Vrange = self.Vs_max - self.Vs_min
+        self.n0 = self.MaxDAC / self.Vrange
+
+    def setBias(self, volt, channel = 0):
+        print("\nSetting bias voltage...")
+        self.nn = int(floor((self.Vs_max - volt) * self.n0))
+        self.daq.AOut(self.nn, channel)
+        reading = self.readVolt(channel)
+        while (abs(reading - self.v1) > .2):
+            if (volts < v1):
+                self.nn -= 1
+            else:
+                nn += 1
+            if self.nn >= self.MaxDAC:
+                self.nn = self.MaxDAC - 1
+            self.daq.AOut(self.nn, channel)
+            reading = self.readVolt(channel)
         
+    def runSweep(self):
+        print("\nRunning sweep...")
+        
+        
+       
+       
+       
+       
+       
     def spreadsheet(self, save_name = "IVtest"):
-        
         print("\nWriting data to spreadsheet...")
+        
         # Creates localhost for libre office
         os.system("soffice --accept='socket,host=localhost,port=2002;urp;' --norestore --nologo --nodefault # --headless")
+        
         # Uses pyoo to open spreadsheet
         desktop = pyoo.Desktop('localhost',2002)
         doc = desktop.create_spreadsheet()
@@ -104,17 +134,17 @@ class IV:
         plt.show()
    
           
-          
 if __name__ == "__main__":
     test = IV()
-    daq = DAQ.DAQ()
-    # 16,1,2,4,"IV.use"
     test.readFile()
-    test.crop()
-    daq.connect()
+    test.initDAQ()
+    test.setSweep()
+    test.setBias(test.v1)
     
+    
+    test.setBias(0)
     #test.spreadsheet()
-    daq.disconnect()
+    test.endDAQ()
     #test.plotIV()
     
     print("\nEnd.")
