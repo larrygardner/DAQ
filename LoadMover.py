@@ -1,8 +1,9 @@
 from uldaq import get_daq_device_inventory, DaqDevice, InterfaceType, DigitalDirection, DigitalPortIoType
 import time
+import os
 
-Cbit = 7
-ambload = 0
+bit_number = 7     # Control bit is at A7
+ambload = 0        
 coldload = 1
 direction = DigitalDirection.OUTPUT
 interface_type = InterfaceType.USB
@@ -26,6 +27,7 @@ dio_device = daq_device.get_dio_device()
 descriptor = daq_device.get_descriptor()
 print('\nConnecting to', descriptor.dev_string, '- please wait...')
 daq_device.connect()
+os.system("clear")
 
 # Get the port types for the device(AUXPORT, FIRSTPORTA, ...)
 dio_info = dio_device.get_info()
@@ -36,14 +38,14 @@ port_to_write = port_types[0]
 dio_device.d_config_port(port_to_write, DigitalDirection.OUTPUT)
 
 # Writes output for bit
-dio_device.d_bit_out(port_to_write, Cbit, coldload)
+dio_device.d_bit_out(port_to_write, bit_number, coldload)
 
 """
 t0 = time.time()
 for n in range(0,10,1):
-    dio_device.d_bit_out(port_to_write, Cbit, ambload)
+    dio_device.d_bit_out(port_to_write, bit_number, ambload)
     time.sleep(1)
-    dio_device.d_bit_out(port_to_write, Cbit, coldload)
+    dio_device.d_bit_out(port_to_write, bit_number, coldload)
     time.sleep(1)
     
     print(n, time.time()-t0)
@@ -56,10 +58,10 @@ print(t1-t0)
 while True:
     move = input("Move load [up, down, or end] : ")
     if move == "up":
-        dio_device.d_bit_out(port_to_write, Cbit, ambload)
+        dio_device.d_bit_out(port_to_write, bit_number, ambload)
         print("\tMoving up\n")
     elif move == "down":
-        dio_device.d_bit_out(port_to_write, Cbit, coldload)
+        dio_device.d_bit_out(port_to_write, bit_number, coldload)
         print("\tMoving down\n")
     elif move == "end":
         print("\tEnd program\n")
@@ -67,3 +69,8 @@ while True:
     else:
         print("\tEnd program\n")
         break
+    
+daq_device.disconnect()
+daq_device.release()
+os.system("clear")
+
