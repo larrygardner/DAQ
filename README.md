@@ -1,1 +1,1 @@
-Repository for use of Measurement Computing devices
+Repository for use of Measurement Computing DAQ devices
