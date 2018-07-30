@@ -80,7 +80,7 @@ class DAQ:
         output_range = self.ao_info.get_ranges()[0]
         self.ao_device.a_out(channel, output_range, AOutFlag.DEFAULT, data)      
     
-    def AInScan(self, low_channel, high_channel, rate, samples_per_channel, scan_time = 1): 
+    def AInScan(self, low_channel, high_channel, rate, samples_per_channel, scan_time = .25): 
         # Verify that the specified device supports hardware pacing for analog input.
         self.ai_device = self.daq_device.get_ai_device()
         self.ai_info = self.ai_device.get_info()
@@ -133,23 +133,13 @@ class DAQ:
                 self.ai_device.scan_stop()                
         
         return d
-     
-    def toVolt(self, data, MaxDAC, range):
-        # Converts bits to Volts
-        volt = (data / MaxDAC) * range + range/2
-        return volt
     
-    def fromVolt(self, volt, MaxDAC, range):
-        # Converts Volts to bits
-        data = ((volt - range/2) * MaxDAC) / range 
-        return data
-         
      
 if __name__ == "__main__":
     daq = DAQ()
     daq.listDevices()
     daq.connect()
-    data = daq.AIn(2)
+    data = daq.AIn(0)
     print(data)
     data = daq.AInScan(0,1,1000,10000,1)
     print(data)

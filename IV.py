@@ -9,6 +9,7 @@
 import sys
 import pyoo
 import os
+import time
 from math import *
 import DAQ
 import matplotlib.pyplot as plt
@@ -34,7 +35,7 @@ class IV:
             self.vmin = float(input("Minimum voltage [mV]: "))
             self.vmax = float(input("Maximum voltage [mV]: "))
             self.step = float(input("Step [mV]: "))
-            self.Navg = 2 * int(input("Averaging factor: ")) + 1
+            self.Navg = 10000
             self.use = "IV.use"
         
         if self.vmin > self.vmax:
@@ -77,17 +78,15 @@ class IV:
         
     def readVolt(self, channel = 0):
         # Reads voltage from specified channel
-        data = self.daq.AIn(channel)
-        # Converts analog input to mV
-        volt = self.daq.toVolt(data, self.MaxDAC, self.Range)
-        mV = (volt / G_v) * 1000
+        volt = self.daq.AIn(channel)
+        # Converts to mV
+        mV = (volt / self.G_v) * 1000
         return mV
 
     def setBias(self, volt):
-        # Sets bias to specified voltage by converting to bits
-        output = self.daq.fromVolt(volt, self.MaxDAC, self.Range)
-        self.daq.AOut(output, self.Out_channel)
-        time.sleep(.5)
+        # Sets bias to specified voltage
+        self.daq.AOut(volt, self.Out_channel)
+        time.sleep(.1)
 
     def prepSweep(self):
         print("Preparing for sweep...")
@@ -98,7 +97,7 @@ class IV:
         # Setting voltage to max in preparation for sweep
         print("\nChanging voltage to maximum...")
         self.bias = self.vmax
-        self.setBias(self.bias)
+        self.setBias(self.bias / 1000)
         
     def runSweep(self):
         print("\nRunning sweep...")
@@ -108,27 +107,26 @@ class IV:
         low_channel, high_channel = min(channels), max(channels)
         
         index = 0
-        volt = self.readVolt(self.V_channel)
-        while(volt > self.vmin):
+        while(self.bias > self.vmin):
+            self.setBias(self.bias / 1000)
             #Collects data from scan
             data = self.daq.AInScan(low_channel, high_channel, self.Rate, self.Navg)
             # Appends data
             self.Vout.append(data[self.V_channel])
             self.Iout.append(data[self.I_channel])
             # Reformats data
-            self.Vout[index] = (self.daq.toVolt(self.Vout[index], self.MaxDAC, self.Range)
-                                * 1000 * G_v)
-            self.Iout[index] = (self.daq.toVolt(self.Iout[index], self.MaxDAC, self.Range)
-                                * G_i)
+            self.Vout[index] = self.Vout[index] * 1000 #/ self.G_v
+            self.Iout[index] = self.Iout[index] # / self.G_i
             
             #if index%70 == 0:
-            print(str(self.Vout[index]) + ' mV \t' + str(self.Iout[index]) + ' mA')
+            print(str('\n{:.3}'.format(self.Vout[index])) + ' mV \t{:.3}'.format(str(self.Iout[index])) + ' mA')
             
             self.bias -= self.step
-            self.setBias(self.bias)
             
             index += 1
-            volt = self.readVolt(self.V_channel)
+            print("INDEX:",index)
+            print("BIAS:",self.bias)
+            
         
     def endSweep(self):
         self.bias = 0
@@ -170,11 +168,11 @@ if __name__ == "__main__":
     test = IV()
     test.readFile()
     test.initDAQ()
-#    test.prepSweep()
-#    test.runSweep()
-#    test.endSweep()
+    test.prepSweep()
+    test.runSweep()
+    test.endSweep()
     test.endDAQ()
-#    test.spreadsheet()
-#    test.plotIV()
+    test.spreadsheet()
+    #test.plotIV()
     
     print("\nEnd.")
