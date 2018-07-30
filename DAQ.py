@@ -6,8 +6,7 @@
 #                                                #
 ##################################################
 
-from uldaq import (get_daq_device_inventory, DaqDevice, InterfaceType, AiInputMode,
-                   create_float_buffer, ScanStatus, ScanOption, AInFlag, AInScanFlag, AOutFlag)
+from uldaq import *
 from os import system
 from sys import stdout
 from time import sleep
@@ -125,7 +124,7 @@ class DAQ:
 
             # Display the data.
             for i in range(channel_count):
-                d[i] = data[index + i]
+                d[i+low_channel] = data[index + i]
             sleep(0.1)          
 
         if self.daq_device:
@@ -134,6 +133,17 @@ class DAQ:
                 self.ai_device.scan_stop()                
         
         return d
+     
+    def toVolt(self, data, MaxDAC, range):
+        # Converts bits to Volts
+        volt = (data / MaxDAC) * range + range/2
+        return volt
+    
+    def fromVolt(self, volt, MaxDAC, range):
+        # Converts Volts to bits
+        data = ((volt - range/2) * MaxDAC) / range 
+        return data
+         
      
 if __name__ == "__main__":
     daq = DAQ()

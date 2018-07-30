@@ -1,6 +1,6 @@
 ##################################################
 #                                                #
-# IV testing at 15mV                             #
+# IV testing                                     #
 #                                                #
 # Larry Gardner, July 2018                       #         
 #                                                #
@@ -21,8 +21,8 @@ class IV:
         
         if len(sys.argv) >= 5:
             self.save_name = sys.argv[1]
-            self.v1 = float(sys.argv[2])
-            self.v2 = float(sys.argv[3])
+            self.vmin = float(sys.argv[2])
+            self.vmax = float(sys.argv[3])
             self.step = int(sys.argv[4])
             self.Navg = int(sys.argv[5])
             if len(sys.argv) == 7:
@@ -30,16 +30,15 @@ class IV:
             else:
                 self.use = "IV.use"
         else:
-            self.save_name = "IVtest"
-            self.save_name = input("Output file: ")
-            self.v1 = float(input("Minimum voltage: "))
-            self.v2 = float(input("Maximum voltage: "))
-            self.step = float(input("Step: "))
-            self.Navg = int(input("Averaging factor: ")) + 1
+            self.save_name = input("Save name: ")
+            self.vmin = float(input("Minimum voltage [mV]: "))
+            self.vmax = float(input("Maximum voltage [mV]: "))
+            self.step = float(input("Step [mV]: "))
+            self.Navg = 2 * int(input("Averaging factor: ")) + 1
             self.use = "IV.use"
         
-        if self.v1 < self.v2:
-            self.v1, self.v2 = self.v2, self.v1
+        if self.vmin > self.vmax:
+            self.vmin, self.vmax = self.vmax, self.vmin
      
     def readFile(self):
         # Opens use file and assigns corresponding parameters
@@ -50,74 +49,91 @@ class IV:
         self.Vs_min = float(lines[0].split()[0])
         self.Vs_max = float(lines[1].split()[0])
         self.MaxDAC = float(lines[2].split()[0])
-        self.ADRate = int(lines[3].split()[0])
-        self.G_volt = float(lines[4].split()[0])
-        self.G_curr = float(lines[5].split()[0])
+        self.Rate = int(lines[3].split()[0])
+        self.G_v = float(lines[4].split()[0])
+        self.G_i = float(lines[5].split()[0])
         self.Boardnum = int(lines[6].split()[0])
-        #self.AD_GAIN = int(lines[7].split()[0])
-        #self.Poffset = float(lines[8].split()[0])
-        
-        self.Vrange = self.Vs_max - self.Vs_min
-        self.n0 = self.MaxDAC / self.Vrange
-        self.nn = int(floor((self.Vs_max - self.v1) * self.n0))
+        self.Range = int(lines[7].split()[0])
+        self.Out_channel = int(lines[8].split()[0])
+        self.V_channel = int(lines[9].split()[0])
+        self.I_channel = int(lines[10].split()[0])
     
     def crop(self):
-        # Limits voltages to Vmax and Vmin
-        if self.v1 < self.Vs_min:
-            self.v1 = self.Vs_min
-        if self.v1 > self.Vs_max:
-            self.v1 = self.Vs_max
-        if self.v2 < self.Vs_min:
-            self.v2 = self.Vs_min
-        if self.v2 > self.Vs_max:
-            self.v2 = self.Vs_max
+        # Limits set voltages to max and min sweep voltages
+        if self.vmin < self.Vs_min:
+            self.vmin = self.Vs_min
+        if self.vmin > self.Vs_max:
+            self.vmin = self.Vs_max
+        if self.vmax < self.Vs_min:
+            self.vmax = self.Vs_min
+        if self.vmax > self.Vs_max:
+            self.vmax = self.Vs_max
             
     def initDAQ(self):
         # Lists available DAQ devices and connects the selected board
         self.daq = DAQ.DAQ()
         self.daq.listDevices()
         self.daq.connect(self.Boardnum)
-    
-    def endDAQ(self):
-        # Disconnects and releases selected board number
-        self.daq.disconnect(self.Boardnum)
-    
+        
     def readVolt(self, channel = 0):
-        # Reads voltage
-        volt = self.daq.AIn(channel)
-        volt = (volt/G_volt)*1000
-        return volt
-    
-    def setSweep(self):
-        print("Preparing for sweep...")
-        # Sets variables in preparation for sweep
-        self.crop()
-        self.Vrange = self.Vs_max - self.Vs_min
-        self.n0 = self.MaxDAC / self.Vrange
+        # Reads voltage from specified channel
+        data = self.daq.AIn(channel)
+        # Converts analog input to mV
+        volt = self.daq.toVolt(data, self.MaxDAC, self.Range)
+        mV = (volt / G_v) * 1000
+        return mV
 
-    def setBias(self, volt, channel = 0):
-        print("\nSetting bias voltage...")
-        self.nn = int(floor((self.Vs_max - volt) * self.n0))
-        self.daq.AOut(self.nn, channel)
-        reading = self.readVolt(channel)
-        while (abs(reading - self.v1) > .2):
-            if (volts < v1):
-                self.nn -= 1
-            else:
-                nn += 1
-            if self.nn >= self.MaxDAC:
-                self.nn = self.MaxDAC - 1
-            self.daq.AOut(self.nn, channel)
-            reading = self.readVolt(channel)
+    def setBias(self, volt):
+        # Sets bias to specified voltage by converting to bits
+        output = self.daq.fromVolt(volt, self.MaxDAC, self.Range)
+        self.daq.AOut(output, self.Out_channel)
+        time.sleep(.5)
+
+    def prepSweep(self):
+        print("Preparing for sweep...")
+        # Prepares for data collection
+        self.Vout = []
+        self.Iout = []
+        self.crop()
+        # Setting voltage to max in preparation for sweep
+        print("\nChanging voltage to maximum...")
+        self.bias = self.vmax
+        self.setBias(self.bias)
         
     def runSweep(self):
         print("\nRunning sweep...")
+
+        # Sets proper format for low and high channels to scan over
+        channels = [self.V_channel, self.I_channel]
+        low_channel, high_channel = min(channels), max(channels)
         
+        index = 0
+        volt = self.readVolt(self.V_channel)
+        while(volt > self.vmin):
+            #Collects data from scan
+            data = self.daq.AInScan(low_channel, high_channel, self.Rate, self.Navg)
+            # Appends data
+            self.Vout.append(data[self.V_channel])
+            self.Iout.append(data[self.I_channel])
+            # Reformats data
+            self.Vout[index] = (self.daq.toVolt(self.Vout[index], self.MaxDAC, self.Range)
+                                * 1000 * G_v)
+            self.Iout[index] = (self.daq.toVolt(self.Iout[index], self.MaxDAC, self.Range)
+                                * G_i)
+            
+            #if index%70 == 0:
+            print(str(self.Vout[index]) + ' mV \t' + str(self.Iout[index]) + ' mA')
+            
+            self.bias -= self.step
+            self.setBias(self.bias)
+            
+            index += 1
+            volt = self.readVolt(self.V_channel)
         
-       
-       
-       
-       
+    def endSweep(self):
+        self.bias = 0
+        self.setBias(self.bias)
+        print("\nBias set to zero. \nSweep is over")
        
     def spreadsheet(self):
         print("\nWriting data to spreadsheet...")
@@ -132,8 +148,8 @@ class IV:
         # Writes data to spreadsheet
         sheet = doc.sheets[0]
         sheet[0,0:2].values = ["Voltage (mV)","Current (mA)"]
-        sheet[1:len(self.Vdata)+1, 0].values = self.Vdata
-        sheet[1:len(self.Idata)+1, 1].values = self.Idata
+        sheet[1:len(self.Vout)+1, 0].values = self.Vout
+        sheet[1:len(self.Iout)+1, 1].values = self.Iout
         doc.save('IVData/' + str(self.save_name) + '.xlsx')
         doc.close()
     
@@ -144,20 +160,21 @@ class IV:
         plt.ylabel("Current (mA)")
         plt.axis([min(self.Vdata), max(self.Vdata), min(self.Idata), max(self.Idata)])
         plt.show()
-   
-"""    
+    
+    def endDAQ(self):
+        # Disconnects and releases selected board number
+        self.daq.disconnect(self.Boardnum)
+
+    
 if __name__ == "__main__":
     test = IV()
     test.readFile()
     test.initDAQ()
-    test.setSweep()
-    test.setBias(test.v1)
-    
-    
-    test.setBias(0)
-    #test.spreadsheet()
+#    test.prepSweep()
+#    test.runSweep()
+#    test.endSweep()
     test.endDAQ()
-    #test.plotIV()
+#    test.spreadsheet()
+#    test.plotIV()
     
     print("\nEnd.")
-"""

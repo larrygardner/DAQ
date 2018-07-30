@@ -5,17 +5,7 @@
 50.04			!Gain of the voltage channel
 0.2025			!Conversion factor for current (mA)
 0			!Boardnum
-14			!Software Gain setting of AD channel (see code below)
-0.011			!zero offset for power channel
-
-
-###############################################################
-Gain setting for AD channels: 
-Range +/-20V (G=1)	code= 15
-Range +/-10V (G=2)	code= 1
-Range +/-5V  (G=4)	code= 0
-Range +/-4V  (G=5)	code= 16
-Range +/-2.5V(G=8)	code= 2
-Range +/-2V  (G=10)	code= 14
-Range +/-1.25V (G=16)	code= 3
-Range +/-1V  (G=20)	code= 4
+20			!Range of volts [BIP10VOLTS: -10 to 10V]
+0 			!Channel for bias voltage output (Pin 13: Analog output 0)
+0	 		!Channel for voltage input (Pin 1: Analog input 0)
+1	 		!Channel for current input (Pin 2: Analog input 1)
