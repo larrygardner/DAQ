@@ -45,10 +45,10 @@ class LoadMover:
             print("\tMoving down\n")
             time.sleep(1)
 
-
     def end(self):
-        # Ends program and disconnects DAQ
+        # Ends program and disconnects devices
         self.daq.disconnect()
+    
     
 if __name__ == "__main__":
     lm = LoadMover()
