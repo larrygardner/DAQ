@@ -20,21 +20,22 @@ class LoadMover:
         os.system("clear")
         # Control load mover via input
         while True:
-            move = input("Move load [up, down, or end] : ")
+            move = input("\nMove load [up, down, or end] : ")
             if move == "up":
                 self.daq.DOut(self.ambload, self.bit_number)
-                print("\tMoving up\n")
+                print("\tMoving up")
             elif move == "down":
                 self.daq.DOut(self.coldload, self.bit_number)
-                print("\tMoving down\n")
+                print("\tMoving down")
             elif move == "end":
-                print("\tEnd program\n")
+                print("\tEnd program")
                 break
             else:
-                print("\tEnd program\n")
+                print("\tEnd program")
                 break
 
-    def timeMove(self, interval = 1, length = 10):
+    def move_time(self, interval = 1, length = 10):
+        os.system("clear")
         t0 = time.time()
         for n in range(0, length, interval):
             self.daq.DOut(self.ambload, self.bit_number)
@@ -52,6 +53,7 @@ class LoadMover:
 if __name__ == "__main__":
     lm = LoadMover()
     lm.initDAQ()
+    lm.move_time(1,10)
     lm.move()
     lm.end()
     
