@@ -10,15 +10,17 @@ import sys
 import pyoo
 import os
 import time
+import visa
 from math import *
 import DAQ
 import matplotlib.pyplot as plt
+import PowerMeter as PM
+import gpib
 
 
 class IV:
-    def __init__(self):
-        self.Vdata = []
-        self.Idata = []
+    def __init__(self):        
+        self.PM = None
         
         if len(sys.argv) >= 5:
             self.save_name = sys.argv[1]
@@ -75,6 +77,16 @@ class IV:
         self.daq = DAQ.DAQ()
         self.daq.listDevices()
         self.daq.connect(self.Boardnum)
+    
+    def initPM(self):
+        # Initializes Power Meter
+        try:
+            rm = visa.ResourceManager("@py")
+            self.pm = PM.PowerMeter(rm.open_resource("GPIB0::12::INSTR"))
+            self.pm_is_connected = True
+        except gpib.GpibError:
+            self.pm_is_connected = False
+            print("No power meter detected.")
         
     def readVolt(self, channel = 0):
         # Reads voltage from specified channel
@@ -91,8 +103,10 @@ class IV:
     def prepSweep(self):
         print("Preparing for sweep...")
         # Prepares for data collection
-        self.Vout = []
-        self.Iout = []
+        self.Vdata = []
+        self.Idata = []
+        self.Biasdata = []
+        self.Pdata = []
         self.crop()
         # Setting voltage to max in preparation for sweep
         print("\nChanging voltage to maximum...")
@@ -109,24 +123,28 @@ class IV:
         index = 0
         while(self.bias > self.vmin):
             self.setBias(self.bias / 1000)
+            
             #Collects data from scan
             data = self.daq.AInScan(low_channel, high_channel, self.Rate, self.Navg)
+            
             # Appends data
-            self.Vout.append(data[self.V_channel])
-            self.Iout.append(data[self.I_channel])
+            self.Vdata.append(data[self.V_channel])
+            self.Idata.append(data[self.I_channel])
+            self.Biasdata.append(self.bias)
+            if self.pm_is_connected == True:
+                self.Pdata.append(self.pm.getData())
+                
             # Reformats data
-            self.Vout[index] = self.Vout[index] * 1000 * self.G_v
-            self.Iout[index] = self.Iout[index] * self.G_i
+            self.Vdata[index] = self.Vdata[index] * 1000 * self.G_v
+            self.Idata[index] = self.Idata[index] * self.G_i
             
             #if index%10 == 0:
-            print(str('\n{:.3}'.format(self.Vout[index])) + ' mV \t{:.3}'.format(str(self.Iout[index])) + ' mA')
+            print(str('\n{:.3}'.format(self.Vdata[index])) + ' mV \t{:.3}'.format(str(self.Idata[index])) + ' mA')
             
             self.bias -= self.step
             
             index += 1
-            print("INDEX:",index)
             print("BIAS: {:.3}".format(self.bias))
-            
         
     def endSweep(self):
         self.bias = 0
@@ -146,8 +164,11 @@ class IV:
         # Writes data to spreadsheet
         sheet = doc.sheets[0]
         sheet[0,0:2].values = ["Voltage (mV)","Current (mA)"]
-        sheet[1:len(self.Vout)+1, 0].values = self.Vout
-        sheet[1:len(self.Iout)+1, 1].values = self.Iout
+        sheet[1:len(self.Vdata)+1, 0].values = self.Vdata
+        sheet[1:len(self.Idata)+1, 1].values = self.Idata
+        if self.pm_is_connected == True:
+            sheet[0,2].value = ["Power (W)"]
+            sheet[1:len(self.Pdata)+1, 2].values = self.Pdata
         doc.save('IVData/' + str(self.save_name) + '.xlsx')
         doc.close()
     
@@ -156,8 +177,18 @@ class IV:
         plt.plot(self.Vdata,self.Idata, 'ro-')
         plt.xlabel("Voltage (mV)")
         plt.ylabel("Current (mA)")
+        plt.title("IV Sweep - 15mV")
         plt.axis([min(self.Vdata), max(self.Vdata), min(self.Idata), max(self.Idata)])
         plt.show()
+        
+    def plotPV(self):
+        # Plot PV curve
+        if self.pm_is_connected == True:
+            plt.plot(self.Vdata, self.Pdata, 'bo-' )
+            plt.xlabel("Voltage (mV)")
+            plt.ylabel("Power (W)")
+            plt.title("PV - 15mV")
+            plt.axis([min(self.Vdata), max(self.Vdata), min(self.Pdata), max(self.Pdata)])
     
     def endDAQ(self):
         # Disconnects and releases selected board number
@@ -168,11 +199,13 @@ if __name__ == "__main__":
     test = IV()
     test.readFile()
     test.initDAQ()
+    test.initPM()
     test.prepSweep()
     test.runSweep()
     test.endSweep()
     test.endDAQ()
     test.spreadsheet()
-    #test.plotIV()
+    test.plotIV()
+    test.plotPV()
     
     print("\nEnd.")
