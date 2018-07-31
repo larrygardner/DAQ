@@ -78,7 +78,27 @@ class DAQ:
         self.ao_device = self.daq_device.get_ao_device()
         self.ao_info = self.ao_device.get_info()
         output_range = self.ao_info.get_ranges()[0]
-        self.ao_device.a_out(channel, output_range, AOutFlag.DEFAULT, data)      
+        self.ao_device.a_out(channel, output_range, AOutFlag.DEFAULT, data)
+        
+    def configDOut(self):
+        ### Run prior to DOut for initial configuration
+        # Write output digital data to specified channel
+        self.dio_device = self.daq_device.get_dio_device()
+        
+        # Get the port types for the device(AUXPORT, FIRSTPORTA, ...)
+        self.dio_info = self.dio_device.get_info()
+        port_types = self.dio_info.get_port_types()
+        self.port_to_write = port_types[0]
+
+        # Configure port
+        self.dio_device.d_config_port(self.port_to_write, DigitalDirection.OUTPUT)
+
+        
+    def DOut(self, data, channel = 0):
+        self.configDOut()
+        # Writes output for bit
+        self.dio_device.d_bit_out(self.port_to_write, channel, data)
+        
     
     def AInScan(self, low_channel, high_channel, rate, samples_per_channel, scan_time = .25): 
         # Verify that the specified device supports hardware pacing for analog input.
@@ -143,4 +163,5 @@ if __name__ == "__main__":
     print(data)
     data = daq.AInScan(0,1,1000,10000,1)
     print(data)
+    daq.configDOut()
     daq.disconnect()
