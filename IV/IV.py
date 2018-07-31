@@ -37,6 +37,10 @@ class IV:
             self.vmin = float(input("Minimum voltage [mV]: "))
             self.vmax = float(input("Maximum voltage [mV]: "))
             self.step = float(input("Step [mV]: "))
+            if self.step <= 0:
+                while self.step <= 0:
+                    print("Step size must be greater than 0.")
+                    self.step = float(input("Step [mV]: "))
             self.Navg = 10000
             self.use = "IV.use"
         
@@ -87,13 +91,6 @@ class IV:
         except gpib.GpibError:
             self.pm_is_connected = False
             print("No power meter detected.")
-        
-    def readVolt(self, channel = 0):
-        # Reads voltage from specified channel
-        volt = self.daq.AIn(channel)
-        # Converts to mV
-        mV = (volt / self.G_v) * 1000
-        return mV
 
     def setBias(self, volt):
         # Sets bias to specified voltage
@@ -138,19 +135,28 @@ class IV:
             self.Vdata[index] = self.Vdata[index] * 1000 * self.G_v
             self.Idata[index] = self.Idata[index] * self.G_i
             
-            #if index%10 == 0:
-            print(str('\n{:.3}'.format(self.Vdata[index])) + ' mV \t{:.3}'.format(str(self.Idata[index])) + ' mA')
-            
+            if index%10 == 0:
+                print("\nINDEX: ",index)
+                print(str('{:.3}'.format(self.Vdata[index])) + ' mV \t{:.3}'.format(str(self.Idata[index])) + ' mA')
+                print("BIAS: {:.3}".format(self.bias))
+                
             self.bias -= self.step
-            
             index += 1
-            print("BIAS: {:.3}".format(self.bias))
         
     def endSweep(self):
         self.bias = 0
         self.setBias(self.bias)
         print("\nBias set to zero. \nSweep is over")
        
+    def endDAQ(self):
+        # Disconnects and releases selected board number
+        self.daq.disconnect(self.Boardnum)
+        
+    def endPM(self):
+        # Disconnects power meter
+        if self.pm_is_connected == True:
+            self.pm.close()
+    
     def spreadsheet(self):
         print("\nWriting data to spreadsheet...")
         
@@ -189,10 +195,7 @@ class IV:
             plt.ylabel("Power (W)")
             plt.title("PV - 15mV")
             plt.axis([min(self.Vdata), max(self.Vdata), min(self.Pdata), max(self.Pdata)])
-    
-    def endDAQ(self):
-        # Disconnects and releases selected board number
-        self.daq.disconnect(self.Boardnum)
+
 
     
 if __name__ == "__main__":
@@ -204,6 +207,7 @@ if __name__ == "__main__":
     test.runSweep()
     test.endSweep()
     test.endDAQ()
+    test.endPM()
     test.spreadsheet()
     test.plotIV()
     test.plotPV()
