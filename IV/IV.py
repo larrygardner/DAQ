@@ -7,7 +7,6 @@
 ##################################################
 
 import sys
-import pyoo
 import os
 import time
 import visa
@@ -107,6 +106,8 @@ class IV:
     def prepSweep(self):
         print("Preparing for sweep...")
         # Prepares for data collection
+        self.Vdata_rawinput = []
+        self.Idata_rawinput = []
         self.Vdata = []
         self.Idata = []
         self.Biasdata = []
@@ -115,7 +116,9 @@ class IV:
         # Setting voltage to max in preparation for sweep
         print("\nChanging voltage to maximum...")
         self.bias = self.vmax
-        self.setBias(self.bias / 1000)
+        # Converts desired bias amount [mV] to DAQ output voltage value [V]
+        self.volt_out = self.bias * self.G_v / 1000
+        self.setBias(self.volt_out)
         
     def runSweep(self):
         print("\nRunning sweep...")
@@ -126,34 +129,38 @@ class IV:
         
         index = 0
         while(self.bias > self.vmin):
-            self.setBias(self.bias / 1000)
+            # Converts desired bias amount [mV] to DAQ output voltage value [V]
+            self.volt_out = self.bias * self.G_v / 1000
+            self.setBias(self.volt_out)
             
             #Collects data from scan
             data = self.daq.AInScan(low_channel, high_channel, self.Rate, self.Navg)
             
-            # Appends data
-            self.Vdata.append(data[self.V_channel])
-            self.Idata.append(data[self.I_channel])
+            # Appends input voltage data
+            self.Vdata_rawinput.append(data[self.V_channel])
+            self.Idata_rawinput.append(data[self.I_channel])
+            
             self.Biasdata.append(self.bias)
             if self.pm_is_connected == True:
                 self.Pdata.append(self.pm.getData())
                 
-            # Reformats data
-            self.Vdata[index] = self.Vdata[index] * 1000 * self.G_v
-            self.Idata[index] = self.Idata[index] * self.G_i
+            # Reformats data (Converts DAQ input voltage to correct voltage and current)
+            self.Vdata[index] = self.Vdata_rawinput[index] * 1000 / self.G_v 
+            self.Idata[index] = self.Idata_rawinput[index] / self.G_i
             
-            if index%10 == 0:
-                print("\nINDEX: ",index)
-                print(str('{:.3}'.format(self.Vdata[index])) + ' mV \t{:.3}'.format(str(self.Idata[index])) + ' mA')
-                print("BIAS: {:.3}".format(self.bias))
+            if index%1 == 0:
+                print(str(round(self.Vdata[index],2)) + ' mV \t' + str(round(self.Idata[index],2)) + ' mA')
+                print("BIAS: " + str(round(self.bias, 2)) + " mV")
+                print("Output voltage: " + str(round(self.volt_out,2)) + " V") 
                 
             self.bias -= self.step
             index += 1
         
     def endSweep(self):
         self.bias = 0
-        self.setBias(self.bias)
-        print("\nBias set to zero. \nSweep is over")
+        self.volt_out = self.bias * self.G_v / 1000
+        self.setBias(self.volt_out)
+        print("\nBias set to zero. \nSweep is over.")
        
     def endDAQ(self):
         # Disconnects and releases selected board number

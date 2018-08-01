@@ -1,6 +1,6 @@
 ##################################################
 #                                                #
-# Class for operating DAQ devices                #
+# Driver for DAQ devices                         #
 #                                                #
 # Larry Gardner, July 2018                       #         
 #                                                #
@@ -51,7 +51,7 @@ class DAQ:
             print("DAQ device", self.device[Boardnum].product_name, "is released.")
             self.daq_device.release()
             
-    def Name(self, index = 0):
+    def name(self, index = 0):
         name = self.device[index].product_name
         return name
     
@@ -80,8 +80,7 @@ class DAQ:
         output_range = self.ao_info.get_ranges()[0]
         self.ao_device.a_out(channel, output_range, AOutFlag.DEFAULT, data)
         
-    def configDOut(self):
-        ### Run prior to DOut for initial configuration
+    def DOut(self, data, channel = 0):
         # Write output digital data to specified channel
         self.dio_device = self.daq_device.get_dio_device()
         
@@ -93,12 +92,8 @@ class DAQ:
         # Configure port
         self.dio_device.d_config_port(self.port_to_write, DigitalDirection.OUTPUT)
 
-        
-    def DOut(self, data, channel = 0):
-        self.configDOut()
         # Writes output for bit
         self.dio_device.d_bit_out(self.port_to_write, channel, data)
-        
     
     def AInScan(self, low_channel, high_channel, rate, samples_per_channel, scan_time = .25): 
         # Verify that the specified device supports hardware pacing for analog input.
@@ -163,5 +158,5 @@ if __name__ == "__main__":
     print(data)
     data = daq.AInScan(0,1,1000,10000,1)
     print(data)
-    daq.configDOut()
+    daq.DOut()
     daq.disconnect()
