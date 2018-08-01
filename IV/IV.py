@@ -91,13 +91,13 @@ class IV:
             if pm in lr:
                 self.pm = PM.PowerMeter(rm.open_resource("GPIB0::12::INSTR"))
                 self.pm_is_connected = True
-                print("Power meter connected.")
+                print("Power meter connected.\n")
             else:
                 self.pm_is_connected = False
-                print("No power meter detected.")
+                print("No power meter detected.\n")
         except gpib.GpibError:
             self.pm_is_connected = False
-            print("No power meter detected.")
+            print("No power meter detected.\n")
 
     def setBias(self, volt):
         # Sets bias to specified voltage
@@ -199,7 +199,6 @@ class IV:
             plt.ylabel("Power (W)")
             plt.title("PV - 15mV")
             plt.axis([min(self.Vdata), max(self.Vdata), min(self.Pdata), max(self.Pdata)])
-
 
     
 if __name__ == "__main__":
