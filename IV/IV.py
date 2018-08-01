@@ -27,9 +27,8 @@ class IV:
             self.vmin = float(sys.argv[2])
             self.vmax = float(sys.argv[3])
             self.step = int(sys.argv[4])
-            self.Navg = int(sys.argv[5])
-            if len(sys.argv) == 7:
-                self.use = sys.argv[6]
+            if len(sys.argv) == 6:
+                self.use = sys.argv[5]
             else:
                 self.use = "IV.use"
         else:
@@ -41,14 +40,15 @@ class IV:
                 while self.step <= 0:
                     print("Step size must be greater than 0.")
                     self.step = float(input("Step [mV]: "))
-            self.Navg = 10000
             self.use = "IV.use"
-        
+            
+        self.Navg = 10000
         if self.vmin > self.vmax:
             self.vmin, self.vmax = self.vmax, self.vmin
      
     def readFile(self):
         # Opens use file and assigns corresponding parameters
+        print("\nUSE file: ",self.use)
         f = open(self.use, 'r')
         lines = f.readlines()
         f.close()
@@ -86,8 +86,15 @@ class IV:
         # Initializes Power Meter
         try:
             rm = visa.ResourceManager("@py")
-            self.pm = PM.PowerMeter(rm.open_resource("GPIB0::12::INSTR"))
-            self.pm_is_connected = True
+            lr = rm.list_resources()
+            pm = 'GPIB0::12::INSTR'
+            if pm in lr:
+                self.pm = PM.PowerMeter(rm.open_resource("GPIB0::12::INSTR"))
+                self.pm_is_connected = True
+                print("Power meter connected.")
+            else:
+                self.pm_is_connected = False
+                print("No power meter detected.")
         except gpib.GpibError:
             self.pm_is_connected = False
             print("No power meter detected.")
@@ -160,23 +167,20 @@ class IV:
     def spreadsheet(self):
         print("\nWriting data to spreadsheet...")
         
-        # Creates localhost for libre office
-        os.system("soffice --accept='socket,host=localhost,port=2002;urp;' --norestore --nologo --nodefault # --headless")
-        
-        # Uses pyoo to open spreadsheet
-        desktop = pyoo.Desktop('localhost',2002)
-        doc = desktop.create_spreadsheet()
+        # Creates document for libre office
+        out = open("IVData/" + str(self.save_name) + ".xlsx", 'w')
 
         # Writes data to spreadsheet
-        sheet = doc.sheets[0]
-        sheet[0,0:2].values = ["Voltage (mV)","Current (mA)"]
-        sheet[1:len(self.Vdata)+1, 0].values = self.Vdata
-        sheet[1:len(self.Idata)+1, 1].values = self.Idata
         if self.pm_is_connected == True:
-            sheet[0,2].value = ["Power (W)"]
-            sheet[1:len(self.Pdata)+1, 2].values = self.Pdata
-        doc.save('IVData/' + str(self.save_name) + '.xlsx')
-        doc.close()
+            out.write("Voltage (mV) \tCurrent (mA) \tPower (W)\n")
+            for i in range(len(Vdata)):
+                out.write(str(self.Vdata[i]) + "\t" + str(self.Idata[i]) + "\t" + str(self.Pdata[i]) + "\n")
+        else:
+            out.write("Voltage (mV) \tCurrent (mA) \n")
+            for i in range(len(self.Vdata)):
+                out.write(str(self.Vdata[i]) + "\t" + str(self.Idata[i]) + "\n")
+        
+        out.close()
     
     def plotIV(self):
         # Plot IV curve
