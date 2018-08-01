@@ -14,11 +14,10 @@ class LoadMover:
         self.daq = DAQ.DAQ()
         self.daq.listDevices()
         self.daq.connect(self.board_number)
-        self.daq.configDOut()
     
     def move(self):
         os.system("clear")
-        # Control load mover via input
+        # Move arm via input
         while True:
             move = input("\nMove load [up, down, or end] : ")
             if move == "up":
@@ -35,6 +34,7 @@ class LoadMover:
                 break
 
     def move_time(self, interval = 1, length = 10):
+        # Moves arm at regular time intervals
         os.system("clear")
         t0 = time.time()
         for n in range(0, length, interval):
@@ -53,7 +53,6 @@ class LoadMover:
 if __name__ == "__main__":
     lm = LoadMover()
     lm.initDAQ()
-    lm.move_time(1,10)
     lm.move()
     lm.end()
     
