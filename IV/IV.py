@@ -59,10 +59,9 @@ class IV:
         self.G_v = float(lines[4].split()[0])
         self.G_i = float(lines[5].split()[0])
         self.Boardnum = int(lines[6].split()[0])
-        self.Range = int(lines[7].split()[0])
-        self.Out_channel = int(lines[8].split()[0])
-        self.V_channel = int(lines[9].split()[0])
-        self.I_channel = int(lines[10].split()[0])
+        self.Out_channel = int(lines[7].split()[0])
+        self.V_channel = int(lines[8].split()[0])
+        self.I_channel = int(lines[9].split()[0])
     
     def crop(self):
         # Limits set voltages to max and min sweep voltages
