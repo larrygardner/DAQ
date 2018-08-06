@@ -62,6 +62,8 @@ class IV:
         self.Out_channel = int(lines[7].split()[0])
         self.V_channel = int(lines[8].split()[0])
         self.I_channel = int(lines[9].split()[0])
+        # Bias range is +/- 15mV, DAQ output range is 0-5V. Voltage offset is required for Volt < 0. 
+        self.V_offset = int(lines[10].split()[0])
     
     def crop(self):
         # Limits set voltages to max and min sweep voltages
@@ -116,7 +118,7 @@ class IV:
         print("\nChanging voltage to maximum...")
         self.bias = self.vmax
         # Converts desired bias amount [mV] to DAQ output voltage value [V]
-        self.volt_out = self.bias * self.G_v / 1000
+        self.volt_out = self.bias * self.G_v / 1000 + self.V_offset
         self.setBias(self.volt_out)
         
     def runSweep(self):
@@ -129,7 +131,7 @@ class IV:
         index = 0
         while(self.bias > self.vmin):
             # Converts desired bias amount [mV] to DAQ output voltage value [V]
-            self.volt_out = self.bias * self.G_v / 1000
+            self.volt_out = self.bias * self.G_v / 1000 + self.V_offset
             self.setBias(self.volt_out)
             
             #Collects data from scan
@@ -144,10 +146,10 @@ class IV:
                 self.Pdata.append(self.pm.getData())
                 
             # Reformats data (Converts DAQ input voltage to correct voltage and current)
-            self.Vdata[index] = self.Vdata_rawinput[index] * 1000 / self.G_v 
-            self.Idata[index] = self.Idata_rawinput[index] / self.G_i
+            self.Vdata[index] = (self.Vdata_rawinput[index] - self.V_offset) * 1000 / self.G_v 
+            self.Idata[index] = (self.Idata_rawinput[index] - self.V_offset) / self.G_i
             
-            if index%1 == 0:
+            if index%5 == 0:
                 print(str(round(self.Vdata[index],2)) + ' mV \t' + str(round(self.Idata[index],2)) + ' mA')
                 print("BIAS: " + str(round(self.bias, 2)) + " mV")
                 print("Output voltage: " + str(round(self.volt_out,2)) + " V") 
@@ -156,8 +158,9 @@ class IV:
             index += 1
         
     def endSweep(self):
+        # Sets bias to zero to end sweep.
         self.bias = 0
-        self.volt_out = self.bias * self.G_v / 1000
+        self.volt_out = self.bias * self.G_v / 1000 + self.V_offset
         self.setBias(self.volt_out)
         print("\nBias set to zero. \nSweep is over.")
        

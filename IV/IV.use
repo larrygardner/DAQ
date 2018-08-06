@@ -8,3 +8,4 @@
 0 			!Channel for bias voltage output (Pin 13: Analog output 0)
 0	 		!Channel for voltage input (Pin 1: Analog input 0)
 1	 		!Channel for current input (Pin 2: Analog input 1)
+0			!Voltage offset (V)
